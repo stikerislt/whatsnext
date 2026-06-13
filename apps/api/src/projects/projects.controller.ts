@@ -2,15 +2,14 @@ import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@ne
 import { ProjectsService } from './projects.service';
 import { JwtAuthGuard, CurrentUser, JwtPayload, RequirePermission, PermissionsGuard } from '../auth/auth.guards';
 import { PERMISSIONS } from '@whatsnext/shared';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { SyncQueueService } from '../sync/sync-queue.service';
 
 @Controller()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ProjectsController {
   constructor(
     private projects: ProjectsService,
-    @InjectQueue('sync') private syncQueue: Queue,
+    private syncQueue: SyncQueueService,
   ) {}
 
   @Get('projects')

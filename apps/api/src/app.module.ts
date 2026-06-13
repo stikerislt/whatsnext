@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
 import { resolve } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { TenantModule } from './tenant/tenant.module';
@@ -14,9 +13,9 @@ import { BonusesModule } from './bonuses/bonuses.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
-import { SyncModule } from './sync/sync.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AppController } from './app.controller';
+import { QueueModule } from './sync/queue.module';
 
 @Module({
   controllers: [AppController],
@@ -29,9 +28,7 @@ import { AppController } from './app.controller';
         resolve(process.cwd(), '../../.env'),
       ],
     }),
-    BullModule.forRoot({
-      connection: { url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
-    }),
+    QueueModule.forRoot(),
     PrismaModule,
     AuthModule,
     TenantModule,
@@ -45,7 +42,6 @@ import { AppController } from './app.controller';
     IntegrationsModule,
     AiModule,
     AuditModule,
-    SyncModule,
   ],
 })
 export class AppModule {}

@@ -2,15 +2,14 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@n
 import { IntegrationsService, IntegrationConnectDto } from './integrations.service';
 import { JwtAuthGuard, CurrentUser, JwtPayload, RequirePermission, PermissionsGuard } from '../auth/auth.guards';
 import { PERMISSIONS } from '@whatsnext/shared';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { SyncQueueService } from '../sync/sync-queue.service';
 
 @Controller('integrations')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class IntegrationsController {
   constructor(
     private integrations: IntegrationsService,
-    @InjectQueue('sync') private syncQueue: Queue,
+    private syncQueue: SyncQueueService,
   ) {}
 
   @Get()
@@ -57,7 +56,7 @@ export class IntegrationsController {
 
 @Controller('webhooks')
 export class WebhooksController {
-  constructor(@InjectQueue('sync') private syncQueue: Queue) {}
+  constructor(private syncQueue: SyncQueueService) {}
 
   @Post('jira')
   jira(@Body() body: Record<string, unknown>) {

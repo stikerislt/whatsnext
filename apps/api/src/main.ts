@@ -2,6 +2,14 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
+function isDeployed(): boolean {
+  return (
+    process.env.NODE_ENV === 'production' ||
+    Boolean(process.env.RAILWAY_ENVIRONMENT) ||
+    Boolean(process.env.RAILWAY_SERVICE_NAME)
+  );
+}
+
 function corsOrigin():
   | string
   | string[]
@@ -12,13 +20,13 @@ function corsOrigin():
     .filter(Boolean);
   if (configured.length === 1) return configured[0];
   if (configured.length > 1) return configured;
-  if (process.env.NODE_ENV === 'production') {
+  if (isDeployed()) {
     return (origin, callback) => {
       if (!origin) return callback(null, true);
       const ok =
         /^https:\/\/[\w-]+\.netlify\.app$/.test(origin) ||
         /^https:\/\/[\w-]+\.up\.railway\.app$/.test(origin);
-      callback(null, ok ? origin : false);
+      callback(null, ok ? (origin as unknown as boolean) : false);
     };
   }
   return 'http://localhost:3000';
