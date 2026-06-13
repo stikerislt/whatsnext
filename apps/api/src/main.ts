@@ -18,7 +18,7 @@ function corsOrigin():
       const ok =
         /^https:\/\/[\w-]+\.netlify\.app$/.test(origin) ||
         /^https:\/\/[\w-]+\.up\.railway\.app$/.test(origin);
-      callback(null, ok);
+      callback(null, ok ? origin : false);
     };
   }
   return 'http://localhost:3000';
