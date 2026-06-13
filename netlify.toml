@@ -1,3 +1,4 @@
+# Redeploy when API URL or build settings change.
 [build]
   command = "npm ci && npm run build -w @whatsnext/shared && npm run build -w @whatsnext/web"
   publish = "apps/web/.next"
