@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #E8EAEE;
+  --bg2: #FFFFFF;
+  --bg3: #F0F2F5;
+  --border: rgba(16, 24, 43, 0.11);
+  --border2: rgba(16, 24, 43, 0.16);
+  --text: #10182B;
+  --muted: #6B7280;
+  --v: #FF751F;
+  --v3: rgba(255, 117, 31, 0.09);
+  --g: #16A34A;
+  --r: #DC2626;
+  --a: #D97706;
+  --b: #2563EB;
+  --card-shadow: 0 1px 2px rgba(16, 24, 43, 0.06), 0 2px 8px rgba(16, 24, 43, 0.05);
+}
+
+body {
+  font-family: 'Poppins', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+
+@layer components {
+  .wn-card {
+    @apply bg-white border border-[var(--border2)] rounded-[14px] overflow-hidden;
+    box-shadow: var(--card-shadow);
+  }
+  .wn-banner {
+    @apply p-4 border border-orange-200 bg-orange-50/50 rounded-[14px] overflow-visible;
+    box-shadow: var(--card-shadow);
+  }
+  .wn-metric {
+    @apply bg-white border border-[var(--border2)] rounded-[14px] p-3.5 relative cursor-pointer hover:border-[var(--v)] transition-all min-w-0 overflow-hidden;
+    box-shadow: var(--card-shadow);
+  }
+  .wn-metric::after {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-[3px] rounded-t;
+    background: var(--mc, var(--v));
+  }
+  .wn-metric-label {
+    @apply text-[8.5px] font-semibold text-[var(--muted)] uppercase tracking-wide mb-1.5 leading-snug;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.1em;
+  }
+  .wn-btn-primary {
+    @apply inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[11.5px] font-semibold bg-[var(--v)] text-white border-none cursor-pointer;
+  }
+  .wn-btn-ghost {
+    @apply inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[11.5px] font-medium bg-white text-[var(--text)] border border-[var(--border)] cursor-pointer;
+  }
+  .tag-strategic { @apply text-[9px] px-2 py-0.5 rounded font-semibold bg-orange-50 text-[var(--v)] border border-orange-200; }
+  .tag-on { @apply text-[9px] px-2 py-0.5 rounded font-semibold bg-green-50 text-[var(--g)]; }
+  .tag-risk { @apply text-[9px] px-2 py-0.5 rounded font-semibold bg-amber-50 text-[var(--a)]; }
+  .tag-off { @apply text-[9px] px-2 py-0.5 rounded font-semibold bg-red-50 text-[var(--r)]; }
+}

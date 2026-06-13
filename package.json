@@ -1,0 +1,32 @@
+{
+  "name": "whatsnext",
+  "private": true,
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "powershell -ExecutionPolicy Bypass -File scripts/free-ports.ps1 -Quiet && npm run build -w @whatsnext/shared && concurrently -k -n shared,api,web -c cyan,magenta,green \"npm run dev -w @whatsnext/shared\" \"npm run dev -w @whatsnext/api\" \"npm run dev -w @whatsnext/web\"",
+    "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/clean-web.ps1 && npm run dev",
+    "dev:reset": "powershell -ExecutionPolicy Bypass -File scripts/clean-web.ps1",
+    "dev:stop": "powershell -ExecutionPolicy Bypass -File scripts/free-ports.ps1",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:generate": "npm run generate -w @whatsnext/database",
+    "db:migrate": "powershell -ExecutionPolicy Bypass -File scripts/ensure-db.ps1 && npm run migrate -w @whatsnext/database",
+    "db:seed": "powershell -ExecutionPolicy Bypass -File scripts/ensure-db.ps1 && npm run seed -w @whatsnext/database",
+    "db:setup": "powershell -ExecutionPolicy Bypass -File scripts/db-setup.ps1",
+    "db:push": "npm run generate -w @whatsnext/database && cd packages/database && npx prisma db push",
+    "test": "turbo run test",
+    "load-test": "npm run load-test -w @whatsnext/database"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

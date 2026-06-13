@@ -1,0 +1,33 @@
+Įkeliamas strateginis dokumentas – PPT, PDF, Doc
+Iki 6 krypčių 
+CLICKUP projektų skaičius 
+Ar projektai numatyti metų eigai - stebėti numatytų projektų vietą laike (birželis ir yra projektų ir spalį)
+Kiek iš jų turi strateginę kryptį - privalomas užpildymas strateginės krypties
+Kokie skyriai turi neužpildytas strategines kryptis 
+Kokie asmenys yra atsakingi (vėliau)
+Statusai – kiek iš projektų turi skirtingus statusus , paskirstyti pagal juos 
+Deadline (vėliau)
+Stateginiai tikslai turi būti matomi pradiniame dashboarde – Turi būti matoma užduočių apimtis, susieta su strategine kryptimi – kiek projektų iš viso, kiek užduočių - skaičiuojamos tik užduotys, susitos su strategine kryptimi 
+Tik paspaudus ant streteginio tikslo, turi rodyti susjusius duomenis - užduočių priskyrimą vienam projektui. Kiek užduočių yra priskirta projektui ir kiek užduočių be projekto, užduočių savininkai. Projekto savininkai – ar priskirta, ar ne . 
+Skaičiavimas atliekamas taip:Projektas – užduočių kiekis – statusas, pvz 2 completed, 1 pending, 2 offtrack.
+Iš jų skaičiuojame efektyvuma – procentine dalį.
+Tarkim turime 5 projektus, kiekvienas iš jų turi procentinę dalį (efektyvumo), iš 5 turimų projektų (procentinės išraiškos) išvedame bendrą vidurkį, kurį matome kaip bendrą procentą Strategy Aligment bloke.
+Prie kiekvienos projekto užduoties turi būti galimybė nueiti tiesiai į projekto užduotį (kuri guli pvz Clickup’e ar Jira) ir matyti.
+Projekto komanda (reikia aprašymo) - detalizacija apačioje
+Talentų efektyvumas 
+Skaičiuojame kiek užduočių priskirta kiekvienam darbuotojui 
+Rodomas  bendras projekto vadovo vertinamas laikas per užduotis
+Tikslas: Apskaičiuoti darbuotojų krūvį ir darbo efektyvumą siekiant stateginių tikslų Vadovas turi matyti darbuotojo capacity  laike, taip pat, kokia dalis užduočių susijusijusi su strateginę reikšmę turinčiais veiksmais, o kokia dalis su operaciniais darbais. Pvz. Kiek laiko praleidžiama apsitarimams – susitikimams, alignment calls ir pan  
+Žmonių įgūdžiai ir jų alokacija – turi būti matoma prie talent data base - 
+Užkelti ir nuscrapinti CV - Matyti įgūdžius, juos išskirti sritimis -Turėti paiešką įgūdžius turintiems darbuotojams - Matyti juos šalia darbuotojo profilio 
+Imonės onboarding. 
+KOKS imones pavadinimas
+Kokia misija, vizija 
+Kokie strateginiai tikslai (PPT, PDF, rankinis įvedimas) 
+CLICKUP, JIRA – prijungti , teams? 
+Parodyti listą su import patvirtinimu 
+Talent data base – visi darbuotojai matomi, prie kiekvieno priskiriamas CV (veliau batchu) 
+Nuscrapinami skills 
+Susyncinti visas veiklas, statusus, projektus, žmonių įgūdžius dashboarduose 
+IT žmogaus darbas – prijungti single sign on Microsoft/Google - toms įmonėms 
+Demo versija premium clickup demo for B2b , microsoft - reikalingas domenas 

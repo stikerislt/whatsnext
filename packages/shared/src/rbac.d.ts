@@ -1,0 +1,24 @@
+import { RoleName } from './types';
+export declare const PERMISSIONS: {
+    readonly TENANT_ADMIN: "tenant:admin";
+    readonly STRATEGY_READ: "strategy:read";
+    readonly STRATEGY_WRITE: "strategy:write";
+    readonly PROJECTS_READ: "projects:read";
+    readonly PROJECTS_WRITE: "projects:write";
+    readonly TALENT_READ: "talent:read";
+    readonly TALENT_WRITE: "talent:write";
+    readonly CV_UPLOAD_SELF: "cv:upload:self";
+    readonly CV_UPLOAD_OTHERS: "cv:upload:others";
+    readonly MARKETPLACE: "marketplace:use";
+    readonly BONUS_CONFIG: "bonus:config";
+    readonly BONUS_VIEW_ALL: "bonus:view:all";
+    readonly DECISIONS_APPROVE: "decisions:approve";
+    readonly INTEGRATIONS_MANAGE: "integrations:manage";
+    readonly SSO_CONFIG: "sso:config";
+    readonly AI_FULL: "ai:full";
+    readonly AUDIT_READ: "audit:read";
+    readonly GDPR_EXPORT: "gdpr:export";
+};
+export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+export declare const ROLE_PERMISSIONS: Record<RoleName, Permission[]>;
+export declare function hasPermission(roles: RoleName[], permission: Permission): boolean;

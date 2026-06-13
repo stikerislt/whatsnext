@@ -1,0 +1,586 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+// ─── Tenant ─────────────────────────────────────────────
+
+model Company {
+  id                    String    @id @default(uuid())
+  name                  String
+  mission               String?
+  vision                String?
+  teamSizeRange         String?
+  onboardingCompletedAt DateTime?
+  settings              Json      @default("{}")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  users                 User[]
+  departments           Department[]
+  strategicGoals        StrategicGoal[]
+  projects              Project[]
+  tasks                 Task[]
+  employees             Employee[]
+  skills                Skill[]
+  integrations          Integration[]
+  marketplaceRequests   MarketplaceRequest[]
+  marketplaceMatches    MarketplaceMatch[]
+  decisions             Decision[]
+  signals               Signal[]
+  bonusCycles           BonusCycle[]
+  aiConversations       AiConversation[]
+  auditLogs             AuditLog[]
+  embeddings            Embedding[]
+  roles                 Role[]
+  strategyDocuments     StrategyDocument[]
+
+  @@map("companies")
+}
+
+model Department {
+  id                  String   @id @default(uuid())
+  companyId           String
+  name                String
+  hasStrategyCoverage Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  @@index([companyId])
+  @@map("departments")
+}
+
+// ─── Auth & RBAC ────────────────────────────────────────
+
+model User {
+  id           String    @id @default(uuid())
+  companyId    String
+  email        String
+  passwordHash String?
+  authProvider String    @default("email")
+  employeeId   String?
+  status       String    @default("active")
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  company       Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee      Employee?        @relation(fields: [employeeId], references: [id])
+  userRoles     UserRole[]
+  auditLogs     AuditLog[]
+  aiConversations AiConversation[]
+
+  @@unique([companyId, email])
+  @@index([companyId])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String
+  permissions Json     @default("[]")
+  createdAt   DateTime @default(now())
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userRoles UserRole[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("roles")
+}
+
+model UserRole {
+  id        String  @id @default(uuid())
+  userId    String
+  roleId    String
+  scopeType String  @default("company")
+  scopeId   String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+// ─── Strategy ───────────────────────────────────────────
+
+model StrategicGoal {
+  id          String    @id @default(uuid())
+  companyId   String
+  title       String
+  description String?
+  ownerId     String?
+  kpiText     String?
+  targetDate  DateTime?
+  status      String    @default("on_track")
+  progressPct Int       @default(0)
+  sortOrder   Int
+  source      String    @default("manual")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  owner     Employee?  @relation("GoalOwner", fields: [ownerId], references: [id])
+  tactics   Tactic[]
+  kpis      Kpi[]
+  projects  Project[]
+  tasks     Task[]
+  decisions Decision[]
+  signals   Signal[]
+  marketplaceRequests MarketplaceRequest[]
+
+  @@index([companyId])
+  @@index([companyId, sortOrder])
+  @@map("strategic_goals")
+}
+
+model Tactic {
+  id        String @id @default(uuid())
+  goalId    String
+  companyId String
+  title     String
+  sortOrder Int    @default(0)
+
+  goal StrategicGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([goalId])
+  @@map("tactics")
+}
+
+model Kpi {
+  id           String  @id @default(uuid())
+  goalId       String
+  companyId    String
+  name         String
+  targetValue  Float?
+  currentValue Float?
+  unit         String?
+  formula      String?
+
+  goal StrategicGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("kpis")
+}
+
+model StrategyDocument {
+  id           String   @id @default(uuid())
+  companyId    String
+  fileName     String
+  s3Key        String
+  parseStatus  String   @default("pending")
+  extractedData Json?
+  createdAt    DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("strategy_documents")
+}
+
+// ─── Execution ──────────────────────────────────────────
+
+model Project {
+  id             String    @id @default(uuid())
+  companyId      String
+  externalId     String?
+  source         String    @default("internal")
+  name           String
+  iconCode       String?
+  type           String    @default("unlinked")
+  goalId         String?
+  ownerId        String?
+  status         String    @default("on")
+  progressPct    Int       @default(0)
+  efficiencyPct  Int       @default(0)
+  timelineStart  DateTime?
+  timelineEnd    DateTime?
+  metadata       Json      @default("{}")
+  lastSyncedAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  company  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  goal     StrategicGoal? @relation(fields: [goalId], references: [id])
+  owner    Employee?      @relation("ProjectOwner", fields: [ownerId], references: [id])
+  tasks    Task[]
+  members  ProjectMember[]
+  decisions Decision[]
+
+  @@unique([companyId, externalId, source])
+  @@index([companyId, type, goalId])
+  @@index([companyId, goalId])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id         String @id @default(uuid())
+  projectId  String
+  employeeId String
+  companyId  String
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, employeeId])
+  @@index([companyId])
+  @@map("project_members")
+}
+
+model Task {
+  id            String    @id @default(uuid())
+  companyId     String
+  projectId     String?
+  externalId    String?
+  source        String    @default("internal")
+  name          String
+  status        String    @default("pending")
+  assigneeId    String?
+  goalId        String?
+  estimateHours Float?
+  externalUrl   String?
+  staleDays     Int       @default(0)
+  lastSyncedAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  company  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project  Project?       @relation(fields: [projectId], references: [id])
+  assignee Employee?      @relation(fields: [assigneeId], references: [id])
+  goal     StrategicGoal? @relation(fields: [goalId], references: [id])
+
+  @@unique([companyId, externalId, source])
+  @@index([companyId, goalId, status])
+  @@index([companyId, assigneeId, status])
+  @@index([companyId, projectId])
+  @@map("tasks")
+}
+
+// ─── Talent ─────────────────────────────────────────────
+
+model Employee {
+  id                String   @id @default(uuid())
+  companyId         String
+  departmentId      String?
+  externalId        String?
+  initials          String?
+  name              String
+  title             String?
+  email             String?
+  avatarColor       String?
+  loadPct           Int      @default(0)
+  capacityHoursWeek Float    @default(40)
+  contribScore      Int      @default(0)
+  availSignalled    Boolean  @default(false)
+  interests         Json     @default("[]")
+  bonusPoolEstimate Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company            Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department         Department?         @relation(fields: [departmentId], references: [id])
+  users              User[]
+  ownedGoals         StrategicGoal[]     @relation("GoalOwner")
+  ownedProjects      Project[]           @relation("ProjectOwner")
+  tasks              Task[]
+  skills             EmployeeSkill[]
+  cvDocument         CVDocument?
+  workAllocations    WorkAllocation[]
+  projectMembers     ProjectMember[]
+  marketplaceRequests MarketplaceRequest[] @relation("Requester")
+  marketplaceMatches MarketplaceMatch[]
+  bonusScores        BonusScore[]
+
+  @@index([companyId])
+  @@index([companyId, loadPct])
+  @@map("employees")
+}
+
+model Skill {
+  id             String @id @default(uuid())
+  companyId      String
+  name           String
+  category       String?
+  normalizedName String
+
+  company  Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees EmployeeSkill[]
+
+  @@unique([companyId, normalizedName])
+  @@index([companyId])
+  @@map("skills")
+}
+
+model EmployeeSkill {
+  id          String @id @default(uuid())
+  employeeId  String
+  skillId     String
+  companyId   String
+  proficiency Int    @default(3)
+  source      String @default("manual")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  skill    Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, skillId])
+  @@index([companyId, skillId])
+  @@map("employee_skills")
+}
+
+model CVDocument {
+  id              String    @id @default(uuid())
+  employeeId      String    @unique
+  companyId       String
+  fileName        String
+  s3Key           String
+  parsedAt        DateTime?
+  parseStatus     String    @default("pending")
+  extractedSkills Json      @default("[]")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("cv_documents")
+}
+
+model WorkAllocation {
+  id             String   @id @default(uuid())
+  employeeId     String
+  companyId      String
+  periodStart    DateTime
+  strategicPct   Int      @default(0)
+  operationalPct Int      @default(0)
+  meetingsPct    Int      @default(0)
+  adminPct       Int      @default(0)
+  source         String   @default("estimated")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, employeeId])
+  @@map("work_allocations")
+}
+
+// ─── Integrations ───────────────────────────────────────
+
+model Integration {
+  id                  String    @id @default(uuid())
+  companyId           String
+  provider            String
+  status              String    @default("disconnected")
+  credentialsEncrypted String?
+  syncIntervalMin     Int       @default(5)
+  lastSyncAt          DateTime?
+  stats               Json      @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, provider])
+  @@index([companyId])
+  @@map("integrations")
+}
+
+// ─── Marketplace ────────────────────────────────────────
+
+model MarketplaceRequest {
+  id          String   @id @default(uuid())
+  companyId   String
+  requesterId String
+  title       String
+  description String?
+  skills      Json     @default("[]")
+  urgency     String   @default("Medium")
+  goalId      String?
+  status      String   @default("open")
+  createdAt   DateTime @default(now())
+
+  company   Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requester Employee       @relation("Requester", fields: [requesterId], references: [id])
+  goal      StrategicGoal? @relation(fields: [goalId], references: [id])
+  matches   MarketplaceMatch[]
+
+  @@index([companyId, status])
+  @@map("marketplace_requests")
+}
+
+model MarketplaceMatch {
+  id         String @id @default(uuid())
+  requestId  String
+  employeeId String
+  companyId  String
+  matchPct   Int
+  reason     String?
+  effort     String?
+  impact     String?
+  status     String @default("suggested")
+
+  company  Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  request  MarketplaceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  employee Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, requestId])
+  @@map("marketplace_matches")
+}
+
+// ─── Intelligence ───────────────────────────────────────
+
+model Decision {
+  id           String   @id @default(uuid())
+  companyId    String
+  title        String
+  detail       String?
+  urgency      String   @default("Medium")
+  status       String   @default("pending")
+  goalId       String?
+  projectId    String?
+  ownerId      String?
+  externalLink String?
+  color        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  goal    StrategicGoal? @relation(fields: [goalId], references: [id])
+  project Project?       @relation(fields: [projectId], references: [id])
+
+  @@index([companyId, status])
+  @@map("decisions")
+}
+
+model Signal {
+  id              String    @id @default(uuid())
+  companyId       String
+  type            String
+  text            String
+  source          String?
+  problemCategory String?
+  impactScore     Int       @default(3)
+  urgencyScore    Int       @default(3)
+  rank            Int       @default(0)
+  goalId          String?
+  acknowledgedAt  DateTime?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  company Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  goal    StrategicGoal? @relation(fields: [goalId], references: [id])
+
+  @@index([companyId, rank])
+  @@map("signals")
+}
+
+// ─── Bonuses ────────────────────────────────────────────
+
+model BonusCycle {
+  id              String   @id @default(uuid())
+  companyId       String
+  name            String
+  periodStart     DateTime
+  periodEnd       DateTime
+  totalPoolAmount Float    @default(0)
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+
+  company  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  criteria BonusCriterion[]
+  scores   BonusScore[]
+
+  @@index([companyId])
+  @@map("bonus_cycles")
+}
+
+model BonusCriterion {
+  id          String @id @default(uuid())
+  cycleId     String
+  companyId   String
+  name        String
+  weightPct   Int
+  metric      String?
+  source      String?
+  description String?
+
+  cycle BonusCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("bonus_criteria")
+}
+
+model BonusScore {
+  id              String @id @default(uuid())
+  cycleId         String
+  employeeId      String
+  companyId       String
+  totalScore      Int    @default(0)
+  estimatedPayout Float  @default(0)
+  breakdown       Json   @default("{}")
+
+  cycle    BonusCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  employee Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, employeeId])
+  @@index([companyId])
+  @@map("bonus_scores")
+}
+
+// ─── AI & Audit ─────────────────────────────────────────
+
+model AiConversation {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String
+  panel     String   @default("full")
+  messages  Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, userId])
+  @@map("ai_conversations")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  companyId  String
+  userId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([companyId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+model Embedding {
+  id         String                       @id @default(uuid())
+  companyId  String
+  entityType String
+  entityId   String
+  vector     Unsupported("vector(1536)")?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, entityType])
+  @@map("embeddings")
+}
