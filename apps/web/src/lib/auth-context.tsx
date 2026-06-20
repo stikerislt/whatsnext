@@ -9,7 +9,7 @@ interface AuthState {
   uiRole: UiRole;
   setUiRole: (r: UiRole) => void;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => void | Promise<void>;
   loading: boolean;
 }
 
@@ -53,7 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const t = getToken();
+    if (t) {
+      try {
+        await apiAuth('/onboarding/restore-sample-goals', { method: 'POST' });
+      } catch {
+        // ignore — only demo tenant restores sample goals
+      }
+    }
     clearToken();
     setTok(null);
     setUser(null);

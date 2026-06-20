@@ -1,8 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, BadRequestException } from '@nestjs/common';
 import { IntegrationsService, IntegrationConnectDto } from './integrations.service';
 import { JwtAuthGuard, CurrentUser, JwtPayload, RequirePermission, PermissionsGuard } from '../auth/auth.guards';
 import { PERMISSIONS } from '@whatsnext/shared';
 import { SyncQueueService } from '../sync/sync-queue.service';
+import { ClickUpClient } from './clickup/clickup.client';
+import { IntegrationSyncRunner } from './integration-sync.runner';
 
 @Controller('integrations')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -10,12 +12,29 @@ export class IntegrationsController {
   constructor(
     private integrations: IntegrationsService,
     private syncQueue: SyncQueueService,
+    private syncRunner: IntegrationSyncRunner,
+    private clickup: ClickUpClient,
   ) {}
 
   @Get()
   @RequirePermission(PERMISSIONS.INTEGRATIONS_MANAGE)
   list(@CurrentUser() user: JwtPayload) {
     return this.integrations.list(user.companyId);
+  }
+
+  @Post('clickup/discover')
+  @RequirePermission(PERMISSIONS.INTEGRATIONS_MANAGE)
+  async discoverClickUp(@Body() body: { apiToken: string; apiUrl?: string }) {
+    const token = body.apiToken?.trim();
+    if (!token) throw new BadRequestException('API token is required');
+    const apiUrl = this.clickup.normalizeBaseUrl(body.apiUrl);
+    await this.clickup.getAuthorizedUser(token, apiUrl);
+    const teams = await this.clickup.getTeams(token, apiUrl);
+    return teams.map((t) => ({
+      id: String(t.id),
+      name: t.name,
+      memberCount: t.members?.length ?? 0,
+    }));
   }
 
   @Post(':provider/connect')
@@ -26,8 +45,8 @@ export class IntegrationsController {
     @Body() body: IntegrationConnectDto,
   ) {
     const result = await this.integrations.connect(user.companyId, provider, user.sub, body);
-    await this.syncQueue.add('sync-tenant', { companyId: user.companyId, provider }, { delay: provider === 'clickup' ? 500 : 0 });
-    return { ...result, syncQueued: true };
+    const sync = await this.syncRunner.syncTenant(user.companyId, provider);
+    return { ...result, sync };
   }
 
   @Patch(':provider')
@@ -43,8 +62,20 @@ export class IntegrationsController {
   @Post(':provider/sync')
   @RequirePermission(PERMISSIONS.INTEGRATIONS_MANAGE)
   async sync(@CurrentUser() user: JwtPayload, @Param('provider') provider: string) {
-    await this.syncQueue.add('sync-tenant', { companyId: user.companyId, provider });
-    return { queued: true, provider, message: 'Sync started — employees, projects, and tasks will import shortly' };
+    const sync = await this.syncRunner.syncTenant(user.companyId, provider);
+    if (sync.mode === 'queued') {
+      return {
+        ...sync,
+        message: 'Sync queued — employees, projects, and tasks will import shortly',
+      };
+    }
+    if (sync.mode === 'inline') {
+      return {
+        ...sync,
+        message: `Imported ${sync.employees} members, ${sync.projects} lists (projects), ${sync.tasks} tasks`,
+      };
+    }
+    return sync;
   }
 
   @Delete(':provider')

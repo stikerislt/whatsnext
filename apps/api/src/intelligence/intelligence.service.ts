@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StrategyService } from '../strategy/strategy.service';
+import { EmployeeScopeService } from '../roster/employee-scope.service';
 import {
   calcWorkTypeSplit,
   calcSignalRank,
@@ -12,12 +13,16 @@ export class IntelligenceService {
   constructor(
     private prisma: PrismaService,
     private strategy: StrategyService,
+    private employeeScope: EmployeeScopeService,
   ) {}
 
   async getHomeDashboard(companyId: string, role: string) {
+    const rosterWhere = await this.employeeScope.rosterWhere(companyId);
     const alignment = await this.strategy.getAlignment(companyId);
     const decisions = await this.prisma.decision.count({ where: { companyId, status: 'pending' } });
-    const overloaded = await this.prisma.employee.count({ where: { companyId, loadPct: { gt: 100 } } });
+    const overloaded = await this.prisma.employee.count({
+      where: { ...rosterWhere, loadPct: { gt: 100 } },
+    });
     const openRequests = await this.prisma.marketplaceRequest.count({ where: { companyId, status: 'open' } });
 
     const projects = await this.prisma.project.findMany({
@@ -48,7 +53,7 @@ export class IntelligenceService {
         orderBy: { createdAt: 'desc' },
       }),
       people: await this.prisma.employee.findMany({
-        where: { companyId },
+        where: rosterWhere,
         orderBy: { loadPct: 'desc' },
         take: 6,
       }),
@@ -142,8 +147,9 @@ export class IntelligenceService {
   }
 
   async generateSignals(companyId: string) {
+    const rosterWhere = await this.employeeScope.rosterWhere(companyId);
     const overloaded = await this.prisma.employee.findMany({
-      where: { companyId, loadPct: { gt: 100 } },
+      where: { ...rosterWhere, loadPct: { gt: 100 } },
       take: 3,
     });
     const unlinked = await this.prisma.project.count({ where: { companyId, type: 'unlinked' } });

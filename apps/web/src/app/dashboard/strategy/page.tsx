@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { GOALS_UPDATED_EVENT } from '@/lib/goals-events';
 import { apiAuth } from '@/lib/api';
 import { aiPath } from '@/lib/ai-nav';
 import { GoalDetailModal, ProjectDetailModal } from '@/components/entity-modals';
@@ -44,7 +45,12 @@ function StrategyContent() {
   const [projectId, setProjectId] = useState<string | null>(null);
 
   useEffect(() => {
-    apiAuth<Alignment>('/strategy/alignment').then(setData).catch(console.error);
+    const load = () => {
+      apiAuth<Alignment>('/strategy/alignment').then(setData).catch(console.error);
+    };
+    load();
+    window.addEventListener(GOALS_UPDATED_EVENT, load);
+    return () => window.removeEventListener(GOALS_UPDATED_EVENT, load);
   }, []);
 
   useEffect(() => {

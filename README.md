@@ -39,7 +39,7 @@ cd packages/database && npx prisma migrate dev --name init && npm run seed
 
 - **Web:** http://localhost:3000
 - **API:** http://localhost:3001/api/v1
-- **Demo login:** `elena@technova.lt` / `demo12345`
+- **Demo login:** `demo@example.com` / `demo12345`
 
 ## Project Structure
 

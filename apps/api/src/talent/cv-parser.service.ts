@@ -65,6 +65,16 @@ export class CvParserService {
     return { ...extractSkillsFromText(text), sourceFormat };
   }
 
+  /** Plain text extraction for strategy documents and other non-CV uploads. */
+  async extractPlainText(buffer: Buffer, fileName: string, mimeType?: string): Promise<string> {
+    const format = detectFormat(fileName, mimeType);
+    if (format === 'csv') {
+      return buffer.toString('utf8').replace(/^\uFEFF/, '').trim();
+    }
+    const { text } = await this.extractText(buffer, fileName, mimeType, format);
+    return text.trim();
+  }
+
   private async extractText(
     buffer: Buffer,
     fileName: string,

@@ -16,6 +16,7 @@ import { AuditModule } from './audit/audit.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AppController } from './app.controller';
 import { QueueModule } from './sync/queue.module';
+import { RosterModule } from './roster/roster.module';
 
 @Module({
   controllers: [AppController],
@@ -30,6 +31,7 @@ import { QueueModule } from './sync/queue.module';
     }),
     QueueModule.forRoot(),
     PrismaModule,
+    RosterModule,
     AuthModule,
     TenantModule,
     OnboardingModule,

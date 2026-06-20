@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { GOALS_UPDATED_EVENT } from '@/lib/goals-events';
 import { apiAuth } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { aiPath } from '@/lib/ai-nav';
@@ -34,7 +35,12 @@ export default function CommandCenterPage() {
   const [homeAi, setHomeAi] = useState('');
 
   useEffect(() => {
-    apiAuth<DashboardData>(`/home/dashboard?role=${uiRole}`).then(setData).catch(console.error);
+    const load = () => {
+      apiAuth<DashboardData>(`/home/dashboard?role=${uiRole}`).then(setData).catch(console.error);
+    };
+    load();
+    window.addEventListener(GOALS_UPDATED_EVENT, load);
+    return () => window.removeEventListener(GOALS_UPDATED_EVENT, load);
   }, [uiRole]);
 
   if (!data) return <div>Loading Command Center…</div>;

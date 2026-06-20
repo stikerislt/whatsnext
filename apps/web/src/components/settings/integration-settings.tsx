@@ -11,7 +11,7 @@ const PROVIDERS = [
     color: '#9333EA',
     desc: 'Employees · Lists (projects) · Tasks · Assignees',
     defaultUrl: 'https://api.clickup.com/api/v2',
-    help: 'Personal API token from ClickUp → Settings → Apps. Team ID is the number in your workspace URL (app.clickup.com/TEAM_ID/...). Name spaces/folders/lists with "strategic", "tactical", or "unlinked" to classify projects.',
+    help: 'Create a personal API token: ClickUp avatar → Settings → Apps → API Token. Then click “Find workspaces” below. Lists become projects; tasks import with assignees; workspace members become employees in Talent Radar.',
   },
   { id: 'slack', name: 'Slack', color: '#FF751F', desc: 'Communication · Signals', defaultUrl: 'https://slack.com/api', help: null },
   { id: 'hibob', name: 'HiBob', color: '#e85d8a', desc: 'HR · People · Skills', defaultUrl: 'https://api.hibob.com/v1', help: null },
@@ -33,6 +33,8 @@ export function IntegrationSettings() {
   const [forms, setForms] = useState<Record<string, { apiUrl: string; apiToken: string; workspaceId: string; workspaceName: string }>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [clickupTeams, setClickupTeams] = useState<Array<{ id: string; name: string; memberCount: number }>>([]);
 
   const load = () => {
     apiAuth<IntegrationRow[]>('/integrations')
@@ -64,9 +66,12 @@ export function IntegrationSettings() {
   const connect = async (provider: string) => {
     setBusy(provider);
     setError(null);
+    setSuccess(null);
     try {
       const body = formFor(provider);
-      await apiAuth(`/integrations/${provider}/connect`, {
+      const res = await apiAuth<{
+        sync?: { mode: string; message?: string; employees?: number; projects?: number; tasks?: number };
+      }>(`/integrations/${provider}/connect`, {
         method: 'POST',
         body: JSON.stringify({
           apiUrl: body.apiUrl,
@@ -77,8 +82,40 @@ export function IntegrationSettings() {
       });
       setEditing(null);
       load();
-      if (provider === 'clickup') {
+      if (res.sync?.mode === 'inline' && res.sync.employees != null) {
+        setSuccess(
+          `ClickUp connected — imported ${res.sync.employees} members, ${res.sync.projects} projects (lists), ${res.sync.tasks} tasks.`,
+        );
+      } else if (res.sync?.mode === 'queued') {
+        setSuccess('ClickUp connected — sync running in background. Refresh in a few seconds.');
         setTimeout(load, 8000);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const discoverClickUp = async () => {
+    setBusy('clickup-discover');
+    setError(null);
+    try {
+      const form = formFor('clickup');
+      if (!form.apiToken.trim()) {
+        setError('Enter your ClickUp API token first');
+        return;
+      }
+      const teams = await apiAuth<Array<{ id: string; name: string; memberCount: number }>>(
+        '/integrations/clickup/discover',
+        {
+          method: 'POST',
+          body: JSON.stringify({ apiToken: form.apiToken, apiUrl: form.apiUrl }),
+        },
+      );
+      setClickupTeams(teams);
+      if (teams.length === 1) {
+        setForm('clickup', { workspaceId: teams[0].id, workspaceName: teams[0].name });
       }
     } catch (e) {
       setError((e as Error).message);
@@ -89,10 +126,16 @@ export function IntegrationSettings() {
 
   const sync = async (provider: string) => {
     setBusy(`${provider}-sync`);
+    setError(null);
+    setSuccess(null);
     try {
-      await apiAuth(`/integrations/${provider}/sync`, { method: 'POST' });
+      const res = await apiAuth<{ mode: string; message?: string; employees?: number; projects?: number; tasks?: number }>(
+        `/integrations/${provider}/sync`,
+        { method: 'POST' },
+      );
       load();
-      setTimeout(load, 8000);
+      if (res.message) setSuccess(res.message);
+      if (res.mode === 'queued') setTimeout(load, 8000);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -120,6 +163,7 @@ export function IntegrationSettings() {
         (strategic / tactical / unlinked), and tasks with assignees into Projects and Talent Radar.
       </p>
       {error && <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+      {success && <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{success}</div>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {PROVIDERS.map((p) => {
           const int = integrations.find((i) => i.provider === p.id);
@@ -164,20 +208,6 @@ export function IntegrationSettings() {
                     onChange={(e) => setForm(p.id, { apiUrl: e.target.value })}
                     placeholder={p.defaultUrl}
                   />
-                  <label className="block text-[10px] font-semibold text-gray-500">Workspace / Team ID</label>
-                  <input
-                    className="w-full border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs"
-                    value={form.workspaceId}
-                    onChange={(e) => setForm(p.id, { workspaceId: e.target.value })}
-                    placeholder="e.g. 9012345678"
-                  />
-                  <label className="block text-[10px] font-semibold text-gray-500">Workspace name (optional)</label>
-                  <input
-                    className="w-full border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs"
-                    value={form.workspaceName}
-                    onChange={(e) => setForm(p.id, { workspaceName: e.target.value })}
-                    placeholder="TechNova Engineering"
-                  />
                   <label className="block text-[10px] font-semibold text-gray-500">
                     API token {int?.config.hasToken && '(leave blank to keep existing)'}
                   </label>
@@ -186,15 +216,72 @@ export function IntegrationSettings() {
                     className="w-full border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs"
                     value={form.apiToken}
                     onChange={(e) => setForm(p.id, { apiToken: e.target.value })}
-                    placeholder="••••••••"
+                    placeholder="pk_…"
                   />
+                  {p.id === 'clickup' && (
+                    <>
+                      <button
+                        type="button"
+                        className="wn-btn-ghost text-xs mt-1"
+                        disabled={busy === 'clickup-discover'}
+                        onClick={discoverClickUp}
+                      >
+                        {busy === 'clickup-discover' ? 'Looking up workspaces…' : 'Find workspaces'}
+                      </button>
+                      {clickupTeams.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          <label className="block text-[10px] font-semibold text-gray-500">Workspace</label>
+                          <select
+                            className="w-full border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs"
+                            value={form.workspaceId}
+                            onChange={(e) => {
+                              const team = clickupTeams.find((t) => t.id === e.target.value);
+                              setForm('clickup', {
+                                workspaceId: e.target.value,
+                                workspaceName: team?.name ?? '',
+                              });
+                            }}
+                          >
+                            <option value="">Select workspace…</option>
+                            {clickupTeams.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name} ({t.memberCount} members)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {p.id !== 'clickup' && (
+                    <>
+                  <label className="block text-[10px] font-semibold text-gray-500">Workspace / Team ID</label>
+                  <input
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs"
+                    value={form.workspaceId}
+                    onChange={(e) => setForm(p.id, { workspaceId: e.target.value })}
+                    placeholder="e.g. 9012345678"
+                  />
+                    </>
+                  )}
+                  {p.id === 'clickup' && !clickupTeams.length && (
+                  <label className="block text-[10px] font-semibold text-gray-500">Workspace / Team ID (or use Find workspaces)</label>
+                  )}
+                  {p.id === 'clickup' && !clickupTeams.length && (
+                  <input
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs"
+                    value={form.workspaceId}
+                    onChange={(e) => setForm(p.id, { workspaceId: e.target.value })}
+                    placeholder="e.g. 9012345678"
+                  />
+                  )}
                 </div>
               )}
 
               <div className="flex flex-wrap gap-2">
                 {isEditing ? (
                   <button type="button" className="wn-btn-primary text-xs" disabled={busy === p.id} onClick={() => connect(p.id)}>
-                    {busy === p.id ? 'Connecting…' : connected ? 'Save & reconnect' : 'Connect'}
+                    {busy === p.id ? (p.id === 'clickup' ? 'Connecting & importing…' : 'Connecting…') : connected ? 'Save & reconnect' : 'Connect'}
                   </button>
                 ) : (
                   <button type="button" className="wn-btn-ghost text-xs" onClick={() => setEditing(p.id)}>

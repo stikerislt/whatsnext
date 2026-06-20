@@ -19,8 +19,16 @@ export class OnboardingController {
   constructor(private onboarding: OnboardingService) {}
 
   @Put('goals')
-  saveGoals(@CurrentUser() user: JwtPayload, @Body() body: { goals: Array<{ title: string; description?: string }> }) {
-    return this.onboarding.saveGoals(user.companyId, body.goals, user.sub);
+  saveGoals(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { goals: Array<{ title: string; description?: string; kpi?: string }>; source?: 'manual' | 'document' },
+  ) {
+    return this.onboarding.saveGoals(user.companyId, body.goals, user.sub, body.source ?? 'manual');
+  }
+
+  @Post('restore-sample-goals')
+  restoreSampleGoals(@CurrentUser() user: JwtPayload) {
+    return this.onboarding.restoreSampleGoals(user.companyId, user.sub);
   }
 
   @Post('strategy-doc')
@@ -38,8 +46,14 @@ export class OnboardingController {
   }
 
   @Post('integrations')
-  connect(@CurrentUser() user: JwtPayload, @Body() body: { providers: string[] }) {
-    return this.onboarding.connectIntegrations(user.companyId, body.providers, user.sub);
+  connect(
+    @CurrentUser() user: JwtPayload,
+    @Body()
+    body: {
+      integrations: Array<{ provider: string; apiUrl?: string; apiToken?: string; workspaceId?: string; workspaceName?: string }>;
+    },
+  ) {
+    return this.onboarding.connectIntegrations(user.companyId, body.integrations ?? [], user.sub);
   }
 
   @Post('confirm-import')

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as crypto from 'crypto';
+import { DEMO_COMPANY_NAME, DEMO_USER_EMAIL } from '@whatsnext/shared';
 const RoleName = {
   SUPER_ADMIN: 'super_admin',
   CEO: 'ceo',
@@ -11,7 +12,7 @@ const RoleName = {
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   super_admin: ['*'],
-  ceo: ['strategy:read', 'strategy:write', 'projects:read', 'integrations:manage'],
+  ceo: ['strategy:read', 'strategy:write', 'projects:read', 'projects:write', 'integrations:manage', 'talent:read', 'talent:write', 'cv:upload:self', 'cv:upload:others'],
   executive: ['strategy:read', 'strategy:write', 'projects:read'],
   hr: ['talent:read', 'talent:write', 'bonus:config'],
   team_lead: ['projects:read', 'projects:write', 'talent:read'],
@@ -27,13 +28,15 @@ async function main() {
     where: { id: '00000000-0000-0000-0000-000000000001' },
     create: {
       id: '00000000-0000-0000-0000-000000000001',
-      name: 'TechNova, UAB',
+      name: DEMO_COMPANY_NAME,
       mission: 'We help growing companies scale operations without losing strategic focus.',
       vision: 'To become the operating backbone for 10,000 companies across Europe by 2028.',
       teamSizeRange: '30-100 people',
-      onboardingCompletedAt: new Date(),
     },
-    update: {},
+    update: {
+      name: DEMO_COMPANY_NAME,
+      onboardingCompletedAt: null,
+    },
   });
 
   for (const roleName of Object.values(RoleName)) {
@@ -47,15 +50,19 @@ async function main() {
   const ceoRole = await prisma.role.findFirst({ where: { companyId: company.id, name: RoleName.CEO } });
   const hash = crypto.createHash('sha256').update('demo12345').digest('hex');
 
+  await prisma.user.deleteMany({
+    where: { companyId: company.id, email: { not: DEMO_USER_EMAIL } },
+  });
+
   const user = await prisma.user.upsert({
-    where: { companyId_email: { companyId: company.id, email: 'elena@technova.lt' } },
+    where: { companyId_email: { companyId: company.id, email: DEMO_USER_EMAIL } },
     create: {
       companyId: company.id,
-      email: 'elena@technova.lt',
+      email: DEMO_USER_EMAIL,
       passwordHash: hash,
       userRoles: ceoRole ? { create: [{ roleId: ceoRole.id }] } : undefined,
     },
-    update: {},
+    update: { passwordHash: hash },
   });
 
   const depts = await Promise.all(
@@ -93,7 +100,7 @@ async function main() {
         initials: p.initials,
         name: p.name,
         title: p.title,
-        email: `${p.initials.toLowerCase()}@technova.lt`,
+        email: `${p.initials.toLowerCase()}@example.com`,
         avatarColor: p.color,
         loadPct: p.load,
         contribScore: p.contrib,
@@ -152,9 +159,17 @@ async function main() {
         status: g.status,
         progressPct: g.progress,
         sortOrder: g.order,
+        source: 'seed',
         ownerId: employees[g.order % employees.length]?.id,
       },
-      update: {},
+      update: {
+        title: g.title,
+        kpiText: g.kpi,
+        status: g.status,
+        progressPct: g.progress,
+        sortOrder: g.order,
+        source: 'seed',
+      },
     });
     goals.push(goal);
   }
@@ -281,7 +296,7 @@ async function main() {
     });
   }
 
-  console.log('Seed complete. Login: elena@technova.lt / demo12345');
+  console.log(`Seed complete. Login: ${DEMO_USER_EMAIL} / demo12345`);
   console.log('Company ID:', company.id);
   console.log('User ID:', user.id);
 }

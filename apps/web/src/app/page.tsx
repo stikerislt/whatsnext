@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
-import { setToken } from '@/lib/api';
+import { api, setToken } from '@/lib/api';
+import { DEMO_EMAIL, DEMO_PASSWORD } from '@/lib/demo-credentials';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('elena@technova.lt');
-  const [password, setPassword] = useState('demo12345');
+  const [email, setEmail] = useState(DEMO_EMAIL);
+  const [password, setPassword] = useState(DEMO_PASSWORD);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +48,14 @@ export default function LoginPage() {
         <button type="submit" disabled={loading} className="wn-btn-primary w-full justify-center py-2.5">
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
-        <p className="text-[10px] text-[var(--muted)] mt-4 text-center">Demo: elena@technova.lt / demo12345</p>
+        <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--bg3)] px-3 py-2.5 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)] mb-1">Demo login</p>
+          <p className="text-xs">
+            <span className="font-mono">{DEMO_EMAIL}</span>
+            <span className="text-[var(--muted)] mx-2">·</span>
+            <span className="font-mono">{DEMO_PASSWORD}</span>
+          </p>
+        </div>
       </form>
     </div>
   );

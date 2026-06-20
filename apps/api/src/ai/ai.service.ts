@@ -1,20 +1,31 @@
 import { Injectable } from '@nestjs/common';
+import { buildLlmSystemPrompt } from '@whatsnext/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { StrategyService } from '../strategy/strategy.service';
+import { LlmService } from './llm.service';
 
 @Injectable()
 export class AiService {
   constructor(
     private prisma: PrismaService,
     private strategy: StrategyService,
+    private llm: LlmService,
   ) {}
 
   async chat(companyId: string, userId: string, panel: string, message: string, conversationId?: string) {
     const context = await this.buildContext(companyId);
-    const systemPrompt = `You are the AI Advisor inside What's Next. ${context}`;
-    let reply: string;
+    const systemPrompt = buildLlmSystemPrompt(
+      `You are the AI Strategy Advisor embedded in the app. ${context} Connect advice to the task→project→goal chain. When users should take action in the UI, cite the exact page and button from the platform guide above.`,
+    );
 
-    if (process.env.ANTHROPIC_API_KEY) {
+    let reply: string;
+    if (this.llm.isConfigured()) {
+      try {
+        reply = await this.llm.chat(systemPrompt, message);
+      } catch {
+        reply = this.mockReply(message, context);
+      }
+    } else if (process.env.ANTHROPIC_API_KEY) {
       reply = await this.callAnthropic(systemPrompt, message);
     } else {
       reply = this.mockReply(message, context);
@@ -55,7 +66,7 @@ export class AiService {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         system,
         messages: [{ role: 'user', content: message }],

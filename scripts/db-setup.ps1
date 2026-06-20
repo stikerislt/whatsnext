@@ -63,5 +63,5 @@ npm run seed
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host ""
-Write-Host "Database ready. Demo login: elena@technova.lt / demo12345" -ForegroundColor Green
+Write-Host "Database ready. Demo login: demo@example.com / demo12345" -ForegroundColor Green
 Write-Host "Start app: npm run dev" -ForegroundColor Green

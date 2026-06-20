@@ -10,6 +10,6 @@ import { MarketplaceModule } from '../marketplace/marketplace.module';
   imports: [AuditModule, MarketplaceModule],
   controllers: [TalentController],
   providers: [TalentService, CvParserService, OcrSpaceService],
-  exports: [TalentService],
+  exports: [TalentService, CvParserService],
 })
 export class TalentModule {}

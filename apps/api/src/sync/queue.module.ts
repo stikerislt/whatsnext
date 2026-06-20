@@ -7,8 +7,7 @@ import { SyncProcessor } from './sync.processor';
 function isUsableRedisUrl(url: string | undefined): boolean {
   if (!url?.trim()) return false;
   try {
-    const { hostname } = new URL(url);
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return false;
+    new URL(url);
     return true;
   } catch {
     return false;

@@ -6,7 +6,7 @@ import { NAV_ITEMS, PAGE_TITLES, ROLE_TABS } from '@/lib/navigation';
 import { useAuth } from '@/lib/auth-context';
 
 const ROLE_USERS = {
-  ceo: { name: 'Elena Kairytė', role: 'Chief Executive Officer', pill: 'C-Suite', initials: 'EK', color: '#FF751F' },
+  ceo: { name: 'Demo User', role: 'Chief Executive Officer', pill: 'C-Suite', initials: 'DU', color: '#FF751F' },
   hr: { name: 'Laura Rimkutė', role: 'Head of People & Culture', pill: 'HR', initials: 'LR', color: '#D97706' },
   lead: { name: 'Tomas Grigaitis', role: 'Engineering Lead', pill: 'Lead', initials: 'TG', color: '#2563EB' },
   emp: { name: 'Aistė Norvilaitė', role: 'Data Analyst', pill: 'Employee', initials: 'AN', color: '#16A34A' },

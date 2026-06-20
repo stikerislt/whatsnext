@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { isDemoCompany } from '@whatsnext/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -13,8 +14,8 @@ export class TenantService {
     return this.prisma.company.update({ where: { id: companyId }, data });
   }
 
-  getOnboardingStatus(companyId: string) {
-    return this.prisma.company.findUnique({
+  async getOnboardingStatus(companyId: string) {
+    const company = await this.prisma.company.findUnique({
       where: { id: companyId },
       select: {
         id: true,
@@ -28,5 +29,13 @@ export class TenantService {
         employees: { select: { id: true } },
       },
     });
+    if (!company) return null;
+
+    const isDemoTenant = isDemoCompany(companyId);
+    return {
+      ...company,
+      isDemoTenant,
+      showOnboarding: isDemoTenant || !company.onboardingCompletedAt,
+    };
   }
 }

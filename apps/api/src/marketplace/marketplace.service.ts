@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calcTalentMatchPct, skillOverlap, calcCapacityFree } from '@whatsnext/shared';
+import { EmployeeScopeService } from '../roster/employee-scope.service';
 
 @Injectable()
 export class MarketplaceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private employeeScope: EmployeeScopeService,
+  ) {}
 
   getRequests(companyId: string) {
     return this.prisma.marketplaceRequest.findMany({
@@ -39,8 +43,9 @@ export class MarketplaceService {
   }
 
   async getTalentPool(companyId: string) {
+    const rosterWhere = await this.employeeScope.rosterWhere(companyId);
     const employees = await this.prisma.employee.findMany({
-      where: { companyId },
+      where: rosterWhere,
       include: {
         skills: { include: { skill: true } },
         cvDocument: true,
@@ -83,8 +88,9 @@ export class MarketplaceService {
     if (!request) return [];
 
     const requiredSkills = (request.skills as string[]) ?? [];
+    const rosterWhere = await this.employeeScope.rosterWhere(companyId);
     const employees = await this.prisma.employee.findMany({
-      where: { companyId },
+      where: rosterWhere,
       include: { skills: { include: { skill: true } } },
     });
 

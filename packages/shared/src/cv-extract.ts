@@ -309,7 +309,7 @@ function inferBackground(skills: string[], text: string): string | undefined {
 /** Demo CV bodies for filenames used in onboarding demos. */
 export const DEMO_CV_BODIES: Record<string, string> = {
   jonaitis: `Jonas Jonaitis
-Senior Software Engineer · TechNova
+Senior Software Engineer · OrgName
 Engineering background with 6+ years building web platforms.
 
 Skills: React, TypeScript, Next.js, Node.js, PostgreSQL, System Design

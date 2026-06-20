@@ -79,7 +79,7 @@ export class IntegrationsService {
     return {
       token: Buffer.from(integration.credentialsEncrypted, 'base64').toString('utf8'),
       teamId,
-      apiUrl: (stats.apiUrl as string) || defaultApiUrl(provider),
+      apiUrl: this.clickup.normalizeBaseUrl((stats.apiUrl as string) || defaultApiUrl(provider)),
     };
   }
 
@@ -95,7 +95,9 @@ export class IntegrationsService {
         ? Buffer.from(existing.credentialsEncrypted, 'base64').toString('utf8')
         : '');
 
-    const apiUrl = dto.apiUrl ?? (prevStats.apiUrl as string) ?? defaultApiUrl(provider);
+    const apiUrl = this.clickup.normalizeBaseUrl(
+      dto.apiUrl ?? (prevStats.apiUrl as string) ?? defaultApiUrl(provider),
+    );
     const workspaceId = dto.workspaceId ?? (prevStats.workspaceId as string) ?? '';
     let workspaceName = dto.workspaceName ?? (prevStats.workspaceName as string) ?? '';
 

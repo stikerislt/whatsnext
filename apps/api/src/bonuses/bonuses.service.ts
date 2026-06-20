@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calcContributionScore, calcBonusPayout } from '@whatsnext/shared';
 import { AuditService } from '../audit/audit.service';
+import { EmployeeScopeService } from '../roster/employee-scope.service';
 
 const DEFAULT_CRITERIA = [
   { name: 'Strategic Goal Contribution', weight: 40, metric: 'Task-to-goal linkage', source: 'Jira/ClickUp' },
@@ -16,6 +17,7 @@ export class BonusesService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private employeeScope: EmployeeScopeService,
   ) {}
 
   async getCurrentCycle(companyId: string) {
@@ -61,7 +63,8 @@ export class BonusesService {
 
   async getPreview(companyId: string) {
     const cycle = await this.getCurrentCycle(companyId);
-    const employees = await this.prisma.employee.findMany({ where: { companyId } });
+    const rosterWhere = await this.employeeScope.rosterWhere(companyId);
+    const employees = await this.prisma.employee.findMany({ where: rosterWhere });
     const criteria = cycle.criteria.map((c) => ({ name: c.name, weight: c.weightPct, score: 75 }));
 
     const scores = employees.map((e) => {

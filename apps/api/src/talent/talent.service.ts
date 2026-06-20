@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { calcCapacityFree } from '@whatsnext/shared';
 import { AuditService } from '../audit/audit.service';
+import { EmployeeScopeService } from '../roster/employee-scope.service';
 import { CvParserService } from './cv-parser.service';
 import { MarketplaceService } from '../marketplace/marketplace.service';
 import * as fs from 'fs';
@@ -12,6 +13,7 @@ export class TalentService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private employeeScope: EmployeeScopeService,
     private cvParser: CvParserService,
     private marketplace: MarketplaceService,
   ) {}
@@ -20,8 +22,9 @@ export class TalentService {
     companyId: string,
     filters: { search?: string; skill?: string; overload?: boolean; available?: boolean },
   ) {
+    const rosterWhere = await this.employeeScope.rosterWhere(companyId);
     let employees = await this.prisma.employee.findMany({
-      where: { companyId },
+      where: rosterWhere,
       include: {
         department: true,
         skills: { include: { skill: true } },
