@@ -134,8 +134,8 @@ export function OnboardingWizard({
   const [docState, setDocState] = useState<'idle' | 'analysing' | 'done'>('idle');
   const [docFileName, setDocFileName] = useState<string | null>(null);
 
-  const [providers, setProviders] = useState<string[]>(['clickup']);
-  const [integrationForms, setIntegrationForms] = useState<Record<string, IntegrationForm>>({ clickup: defaultIntegrationForm('clickup') });
+  const [providers, setProviders] = useState<string[]>([]);
+  const [integrationForms, setIntegrationForms] = useState<Record<string, IntegrationForm>>({});
   const [clickupTeams, setClickupTeams] = useState<Array<{ id: string; name: string; memberCount: number }>>([]);
   const [integrationError, setIntegrationError] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -373,8 +373,13 @@ export function OnboardingWizard({
             method: 'POST',
             body: JSON.stringify({ integrations }),
           });
-          setImportResult(null);
+        } else {
+          await apiAuth('/onboarding/integrations', {
+            method: 'POST',
+            body: JSON.stringify({ integrations: [] }),
+          });
         }
+        setImportResult(null);
       }
       if (step === 5) {
         await apiAuth('/onboarding/complete', { method: 'POST' });
@@ -479,7 +484,7 @@ export function OnboardingWizard({
           {step === 3 && (
             <>
               <div style={{ fontSize: 11.5, color: 'var(--ob-muted)', marginBottom: 14 }}>
-                Select your tools and paste API credentials. What&apos;s Next will import projects, tasks, and team members before you reach the dashboard.
+                Select your tools and paste API credentials to import live data. Deselect all tools to continue with sample demo data.
               </div>
               <div className="ob-int-grid">
                 {INTEGRATIONS.map((int) => {

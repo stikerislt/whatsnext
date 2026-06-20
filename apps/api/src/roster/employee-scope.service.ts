@@ -10,43 +10,60 @@ export function isSeedEmployee(employee: { id: string; externalId?: string | nul
   return false;
 }
 
+/** Rows created by a live API sync (not demo seed people). */
+export function isLiveImportedEmployee(employee: { id: string; externalId?: string | null }): boolean {
+  return Boolean(employee.externalId) && !employee.id.startsWith('emp-');
+}
+
 @Injectable()
 export class EmployeeScopeService {
   constructor(private prisma: PrismaService) {}
 
-  /** True when a work tool is connected/synced — roster should exclude demo seed people. */
+  /** True only when an integration has real API credentials (not stale DB rows). */
   async usesImportedRoster(companyId: string): Promise<boolean> {
-    const [integrations, importedEmployees] = await Promise.all([
-      this.prisma.integration.findMany({
-        where: { companyId, status: 'connected', credentialsEncrypted: { not: null } },
-        select: { provider: true, lastSyncAt: true },
-      }),
-      this.prisma.employee.count({ where: { companyId, externalId: { not: null } } }),
-    ]);
+    const integrations = await this.prisma.integration.findMany({
+      where: { companyId, status: 'connected', credentialsEncrypted: { not: null } },
+      select: { provider: true, lastSyncAt: true },
+    });
 
-    if (!integrations.length) return importedEmployees > 0;
+    if (!integrations.length) return false;
 
-    if (importedEmployees > 0) return true;
+    const liveImports = await this.prisma.employee.count({
+      where: {
+        companyId,
+        externalId: { not: null },
+        NOT: { id: { startsWith: 'emp-' } },
+      },
+    });
+    if (liveImports > 0) return true;
 
     if (integrations.some((i) => i.lastSyncAt)) return true;
 
     for (const integration of integrations) {
-      const importedProjects = await this.prisma.project.count({
-        where: { companyId, source: integration.provider },
+      const liveProjects = await this.prisma.project.count({
+        where: {
+          companyId,
+          source: integration.provider,
+          metadata: { path: ['clickupTeamId'], not: Prisma.DbNull },
+        },
       });
-      if (importedProjects > 0) return true;
+      if (liveProjects > 0) return true;
     }
 
     return false;
   }
 
   async rosterWhere(companyId: string): Promise<Prisma.EmployeeWhereInput> {
-    if (!(await this.usesImportedRoster(companyId))) {
-      return { companyId };
+    if (await this.usesImportedRoster(companyId)) {
+      return {
+        companyId,
+        externalId: { not: null },
+        NOT: { id: { startsWith: 'emp-' } },
+      };
     }
     return {
       companyId,
-      externalId: { not: null },
+      OR: [{ externalId: null }, { id: { startsWith: 'emp-' } }],
     };
   }
 }

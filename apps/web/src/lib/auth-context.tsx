@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiAuth, getToken, setToken, clearToken } from '@/lib/api';
+import { DEMO_EMAIL } from '@/lib/demo-credentials';
 
 export type UiRole = 'ceo' | 'hr' | 'lead' | 'emp';
 
@@ -51,15 +52,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(data.accessToken);
     setTok(data.accessToken);
     setUser(data.user);
+    if (data.user?.email?.toLowerCase() === DEMO_EMAIL) {
+      try {
+        await apiAuth('/onboarding/reset-demo-session', { method: 'POST' });
+      } catch {
+        // ignore — demo reset is best-effort
+      }
+    }
   };
 
   const logout = async () => {
     const t = getToken();
     if (t) {
       try {
-        await apiAuth('/onboarding/restore-sample-goals', { method: 'POST' });
+        await apiAuth('/onboarding/reset-demo-session', { method: 'POST' });
       } catch {
-        // ignore — only demo tenant restores sample goals
+        // ignore — only demo tenant resets
       }
     }
     clearToken();

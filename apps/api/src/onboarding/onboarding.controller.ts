@@ -31,6 +31,11 @@ export class OnboardingController {
     return this.onboarding.restoreSampleGoals(user.companyId, user.sub);
   }
 
+  @Post('reset-demo-session')
+  resetDemoSession(@CurrentUser() user: JwtPayload) {
+    return this.onboarding.resetDemoSession(user.companyId, user.sub);
+  }
+
   @Post('strategy-doc')
   @UseInterceptors(FileInterceptor('file'))
   uploadDoc(

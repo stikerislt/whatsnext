@@ -74,6 +74,73 @@ export class OnboardingService {
     });
   }
 
+  async resetDemoSession(companyId: string, userId: string) {
+    if (!isDemoCompany(companyId)) return { reset: false };
+
+    await this.clearLiveImportData(companyId);
+    await this.restoreSampleGoals(companyId, userId);
+    await this.audit.log(companyId, userId, 'onboarding.demo_session_reset', 'company', companyId);
+    return { reset: true };
+  }
+
+  /** Remove people/projects/tasks imported via live API sync; keep seed demo data. */
+  async clearLiveImportData(companyId: string) {
+    const liveProjects = await this.prisma.project.findMany({
+      where: { companyId },
+      select: { id: true, metadata: true },
+    });
+    const liveProjectIds = liveProjects
+      .filter((p) => (p.metadata as Record<string, unknown>)?.clickupTeamId != null)
+      .map((p) => p.id);
+
+    if (liveProjectIds.length) {
+      await this.prisma.task.deleteMany({ where: { projectId: { in: liveProjectIds } } });
+      await this.prisma.projectMember.deleteMany({ where: { projectId: { in: liveProjectIds } } });
+      await this.prisma.project.deleteMany({ where: { id: { in: liveProjectIds } } });
+    }
+
+    const importedEmployees = await this.prisma.employee.findMany({
+      where: {
+        companyId,
+        externalId: { not: null },
+        NOT: { id: { startsWith: 'emp-' } },
+      },
+      select: { id: true },
+    });
+    const employeeIds = importedEmployees.map((e) => e.id);
+
+    if (employeeIds.length) {
+      await this.prisma.employeeSkill.deleteMany({ where: { employeeId: { in: employeeIds } } });
+      await this.prisma.cVDocument.deleteMany({ where: { employeeId: { in: employeeIds } } });
+      await this.prisma.projectMember.deleteMany({ where: { employeeId: { in: employeeIds } } });
+      await this.prisma.workAllocation.deleteMany({ where: { employeeId: { in: employeeIds } } });
+      await this.prisma.task.updateMany({
+        where: { assigneeId: { in: employeeIds } },
+        data: { assigneeId: null },
+      });
+      await this.prisma.employee.deleteMany({ where: { id: { in: employeeIds } } });
+    }
+
+    await this.prisma.integration.updateMany({
+      where: { companyId },
+      data: {
+        credentialsEncrypted: null,
+        lastSyncAt: null,
+        status: 'connected',
+        stats: {},
+      },
+    });
+
+    await this.prisma.integration.updateMany({
+      where: { companyId, provider: 'jira' },
+      data: { stats: { tasks: 148, linked: 89, stale: 23 } },
+    });
+    await this.prisma.integration.updateMany({
+      where: { companyId, provider: 'clickup' },
+      data: { stats: { tasks: 67, linked: 45, stale: 12 } },
+    });
+  }
+
   async restoreSampleGoals(companyId: string, userId: string) {
     if (!isDemoCompany(companyId)) return { restored: false };
 
@@ -181,6 +248,13 @@ export class OnboardingService {
     items: Array<{ provider: string } & IntegrationConnectDto>,
     userId: string,
   ) {
+    if (!items.length) {
+      if (isDemoCompany(companyId)) {
+        await this.clearLiveImportData(companyId);
+      }
+      return [];
+    }
+
     const results: Array<{
       provider: string;
       connected: boolean;
